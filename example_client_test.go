@@ -2,6 +2,7 @@ package easyssh_test
 
 import (
 	"log"
+	"net"
 
 	"golang.org/x/crypto/ssh"
 
@@ -35,7 +36,9 @@ func ExampleClient_LocalForward() {
 	}
 	defer conn.Close()
 
-	err = conn.LocalForward("localhost:8000", "localhost:6060")
+	laddr, _ := net.ResolveTCPAddr("tcp", "localhost:8000")
+	raddr, _ := net.ResolveTCPAddr("tcp", "localhost:6060")
+	err = conn.LocalForward(laddr, raddr)
 	if err != nil {
 		log.Fatalf("unable to forward local port: %s", err)
 	}

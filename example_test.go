@@ -34,7 +34,7 @@ func ExampleServer_ListenAndServe() {
 
 	s.Config = config
 
-	handler := easyssh.NewServerHandler()
+	handler := easyssh.NewStandardSSHServerHandler()
 	channelHandler := easyssh.NewChannelsMux()
 
 	channelHandler.HandleChannel(easyssh.SessionRequest, easyssh.SessionHandler())
@@ -46,6 +46,7 @@ func ExampleServer_ListenAndServe() {
 }
 
 func ExampleListenAndServe() {
+	config := &ssh.ServerConfig{}
 	easyssh.HandleChannel(easyssh.SessionRequest, easyssh.SessionHandler())
 	easyssh.HandleChannel(easyssh.DirectForwardRequest, easyssh.DirectPortForwardHandler())
 	easyssh.HandleRequestFunc(easyssh.RemoteForwardRequest, easyssh.TCPIPForwardRequest)
@@ -56,7 +57,7 @@ func ExampleListenAndServe() {
 func ExampleChannelsMux_HandleChannelFunc() {
 	handler := easyssh.NewChannelsMux()
 
-	testHandler := func(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan *ssh.Request, sshConn *ssh.ServerConn) {
+	testHandler := func(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan *ssh.Request, sshConn ssh.Conn) {
 		defer channel.Close()
 		ssh.DiscardRequests(reqs)
 	}

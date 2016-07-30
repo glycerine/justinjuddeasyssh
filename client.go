@@ -1,7 +1,6 @@
 package easyssh
 
 import (
-	"log"
 	"net"
 
 	"golang.org/x/crypto/ssh"
@@ -34,7 +33,7 @@ func (c *Client) LocalForward(laddr, raddr *net.TCPAddr) error {
 		println(err.Error())
 		return err
 	}
-	log.Println("Listening on address: ", ln.Addr().String())
+	logger.Println("Listening on address: ", ln.Addr().String())
 
 	quit := make(chan bool)
 

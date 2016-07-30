@@ -8,7 +8,7 @@ import (
 
 type testHandler struct{}
 
-func (testHandler) HandleChannel(nCh ssh.NewChannel, ch ssh.Channel, reqs <-chan *ssh.Request, conn *ssh.ServerConn) {
+func (testHandler) HandleChannel(nCh ssh.NewChannel, ch ssh.Channel, reqs <-chan *ssh.Request, conn ssh.Conn) {
 	defer ch.Close()
 	// Do something
 }
@@ -18,7 +18,7 @@ func ExampleChannelsMux_HandleChannel() {
 
 	handler.HandleChannel("test", testHandler{})
 
-	test2Handler := func(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan *ssh.Request, sshConn *ssh.ServerConn) {
+	test2Handler := func(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan *ssh.Request, sshConn ssh.Conn) {
 		defer channel.Close()
 		ssh.DiscardRequests(reqs)
 	}

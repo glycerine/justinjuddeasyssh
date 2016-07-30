@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"sync"
@@ -42,7 +41,7 @@ func SessionChannel(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan 
 	c := exec.Command(shell)
 	f, err := pty.Start(c)
 	if err != nil {
-		log.Printf("Unable to start shell: %s", shell)
+		logger.Printf("Unable to start shell: %s", shell)
 		return
 	}
 
@@ -53,9 +52,9 @@ func SessionChannel(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan 
 		channel.Close()
 		err := c.Wait()
 		if err != nil {
-			log.Printf("failed to exit bash (%s)", err)
+			logger.Printf("failed to exit bash (%s)", err)
 		}
-		log.Printf("session closed")
+		logger.Printf("session closed")
 	}
 
 	go func(in <-chan *ssh.Request) {
@@ -73,11 +72,11 @@ func SessionChannel(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan 
 				pty := ptyReq{}
 				err = ssh.Unmarshal(req.Payload, &pty)
 				if err != nil {
-					log.Printf("Unable to decode pty request: %s", err.Error())
+					logger.Printf("Unable to decode pty request: %s", err.Error())
 				}
 
 				setWinsize(f.Fd(), pty.Width, pty.Height)
-				log.Printf("pty-req '%s'", pty.Term)
+				logger.Printf("pty-req '%s'", pty.Term)
 
 				type termModeStruct struct {
 					//Key byte
@@ -115,7 +114,7 @@ func SessionChannel(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan 
 				win := windowDimensionReq{}
 				err = ssh.Unmarshal(req.Payload, &win)
 				if err != nil {
-					log.Printf("Error reading window dimension change request: %s", err.Error())
+					logger.Printf("Error reading window dimension change request: %s", err.Error())
 				}
 				setWinsize(f.Fd(), win.Width, win.Height)
 				continue //no response according to RFC 4254 6.7
@@ -132,20 +131,20 @@ func SessionChannel(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan 
 				}
 
 				command = exec.Command("sh", "-c", cmd.Command) // Let shell do the parsing
-				log.Printf("exec starting: %s", cmd.Command)
+				logger.Printf("exec starting: %s", cmd.Command)
 				//c.Env = append(c.Env, env...)
 
 				exitStatus := exitStatusReq{}
 
 				fd, err := pty.Start(command)
 				if err != nil {
-					log.Printf("Unable to wrap exec command in pty\n")
+					logger.Printf("Unable to wrap exec command in pty\n")
 					return
 				}
 
 				execClose := func() {
 					channel.Close()
-					log.Printf("exec finished: %s", cmd.Command)
+					logger.Printf("exec finished: %s", cmd.Command)
 				}
 
 				defer fd.Close()
@@ -160,7 +159,7 @@ func SessionChannel(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan 
 				//command.Stdin = channel // TODO: test how stdin works on exec on openssh server
 				//err = command.Run()
 				if err != nil {
-					log.Printf("Error running exec : %s", err.Error())
+					logger.Printf("Error running exec : %s", err.Error())
 					e, ok := err.(*exec.ExitError)
 					errVal := 1
 					if ok {
@@ -202,7 +201,7 @@ func SessionChannel(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan 
 				ok = true
 				sig := signalRequest{}
 				ssh.Unmarshal(req.Payload, &sig)
-				log.Println("Received Signal: ", sig.Signal)
+				logger.Println("Received Signal: ", sig.Signal)
 
 				s := signalsMap[sig.Signal]
 				if command != nil {
@@ -307,7 +306,7 @@ type winsize struct {
 
 // SetWinsize uses syscall to set pty window size
 func setWinsize(fd uintptr, w, h uint32) {
-	log.Printf("Resize Window to %dx%d", w, h)
+	logger.Printf("Resize Window to %dx%d", w, h)
 	ws := &winsize{Col: uint16(w), Row: uint16(h)}
 	syscall.Syscall(syscall.SYS_IOCTL, fd, uintptr(syscall.TIOCSWINSZ), uintptr(unsafe.Pointer(ws)))
 }

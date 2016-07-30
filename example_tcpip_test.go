@@ -34,7 +34,7 @@ func ExampleDirectPortForwardChannel() {
 
 	s.Config = config
 
-	handler := easyssh.NewServerHandler()
+	handler := easyssh.NewStandardSSHServerHandler()
 	channelHandler := easyssh.NewChannelsMux()
 
 	channelHandler.HandleChannel(easyssh.DirectForwardRequest, easyssh.DirectPortForwardHandler())

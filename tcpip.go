@@ -3,7 +3,6 @@ package easyssh
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 
@@ -53,10 +52,10 @@ func TCPIPForwardRequest(req *ssh.Request, sshConn ssh.Conn) {
 	ln, err := net.Listen("tcp", addr) //tie to the client connection
 
 	if err != nil {
-		log.Println("Unable to listen on address: ", addr)
+		logger.Println("Unable to listen on address: ", addr)
 		return
 	}
-	log.Println("Listening on address: ", ln.Addr().String())
+	logger.Println("Listening on address: ", ln.Addr().String())
 
 	quit := make(chan bool)
 
@@ -102,7 +101,7 @@ func TCPIPForwardRequest(req *ssh.Request, sshConn ssh.Conn) {
 					p.Port2 = uint32(portnum)
 					ch, reqs, err := sshConn.OpenChannel(ForwardedTCPReturnRequest, ssh.Marshal(p))
 					if err != nil {
-						log.Println("Open forwarded Channel: ", err.Error())
+						logger.Println("Open forwarded Channel: ", err.Error())
 						return
 					}
 					ssh.DiscardRequests(reqs)
@@ -112,7 +111,7 @@ func TCPIPForwardRequest(req *ssh.Request, sshConn ssh.Conn) {
 							ch.Close()
 							conn.Close()
 
-							// log.Printf("forwarding closed")
+							// logger.Printf("forwarding closed")
 						}
 
 						go CopyReadWriters(conn, ch, close)
@@ -126,7 +125,7 @@ func TCPIPForwardRequest(req *ssh.Request, sshConn ssh.Conn) {
 
 	}()
 	sshConn.Wait()
-	log.Println("Stop forwarding/listening on ", ln.Addr())
+	logger.Println("Stop forwarding/listening on ", ln.Addr())
 	ln.Close()
 	quit <- true
 
@@ -151,7 +150,7 @@ func DirectPortForwardChannel(newChannel ssh.NewChannel, channel ssh.Channel, re
 
 	p := directForward{}
 	ssh.Unmarshal(newChannel.ExtraData(), &p)
-	log.Println(p)
+	logger.Println(p)
 
 	go func(ch ssh.Channel, sshConn ssh.Conn) {
 		addr := fmt.Sprintf("%s:%d", p.Host1, p.Port1)
@@ -163,7 +162,7 @@ func DirectPortForwardChannel(newChannel ssh.NewChannel, channel ssh.Channel, re
 			ch.Close()
 			conn.Close()
 
-			//log.Printf("forwarding closed")
+			//logger.Printf("forwarding closed")
 		}
 
 		go CopyReadWriters(conn, ch, close)

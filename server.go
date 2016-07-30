@@ -1,7 +1,6 @@
 package easyssh
 
 import (
-	"log"
 	"net"
 
 	"golang.org/x/crypto/ssh"
@@ -31,7 +30,7 @@ func (s *Server) ListenAndServe() error {
 // Serve accepts incoming connections on the provided listener.and reads global SSH Channel and Out-of-band requests and calls s,ConnHandler to handle them
 func (s *Server) Serve(l net.Listener) error {
 	defer l.Close()
-	log.Print("SSH Server started listening on: ", l.Addr())
+	logger.Print("SSH Server started listening on: ", l.Addr())
 	for {
 		tcpConn, err := l.Accept()
 		if err != nil {
@@ -59,7 +58,7 @@ func (s *Server) HandleOpenChannel(channelName string, handler ChannelMultipleRe
 
 // HandleOpenChannelFunc requests that the remote end accept a channel request and if accepted,
 // passes the newly opened channel and requests to the provided handler function
-func (s *Server) HandleOpenChannelFunc(channelName string, handler ChannelMultipleRequestsHandlerFunc, data ...byte) error {
+func (s *Server) HandleOpenChannelFunc(channelName string, handler func(reqs <-chan *ssh.Request, sshConn ssh.Conn, channelType string, channel ssh.Channel), data ...byte) error {
 
 	return s.HandleOpenChannel(channelName, ChannelMultipleRequestsHandlerFunc(handler), data...)
 }
@@ -76,11 +75,11 @@ func (c *conn) serve() {
 		return
 	}
 	c.server.ServerConn = sshConn
-	log.Print("New ssh connection from: ", c.conn.RemoteAddr())
+	logger.Print("New ssh connection from: ", c.conn.RemoteAddr())
 
 	go func() {
 		sshConn.Wait()
-		log.Print("Closing ssh connection from: ", c.conn.RemoteAddr())
+		logger.Print("Closing ssh connection from: ", c.conn.RemoteAddr())
 		if c.conn != nil {
 			c.conn.Close()
 			//c.conn = nil

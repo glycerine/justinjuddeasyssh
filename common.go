@@ -2,11 +2,24 @@ package easyssh
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"sync"
 
 	"golang.org/x/crypto/ssh"
 )
+
+var logger *log.Logger
+
+func init() {
+	logger = log.New(ioutil.Discard, "easyssh", 0)
+}
+
+// EnableLogging enables logging for the easyssh library
+func EnableLogging(output io.Writer) {
+	logger.SetOutput(output)
+}
 
 // A ConnHandler is a top level SSH Manager.  Objects implementing the ConnHandler are responsible for managing incoming Channels and Global Requests
 type ConnHandler interface {
@@ -168,7 +181,7 @@ func (s *GlobalMultipleRequestsMux) HandleRequest(requestType string, handler Gl
 }
 
 // HandleRequestFunc registers the Channel Handler function for the provided Request Type
-func (s *GlobalMultipleRequestsMux) HandleRequestFunc(requestType string, f GlobalRequestHandlerFunc) {
+func (s *GlobalMultipleRequestsMux) HandleRequestFunc(requestType string, f func(*ssh.Request, ssh.Conn)) {
 	s.HandleRequest(requestType, GlobalRequestHandlerFunc(f))
 
 }
@@ -186,7 +199,7 @@ func (s *ChannelsMux) HandleChannel(channelType string, handler ChannelHandler) 
 }
 
 // HandleChannelFunc registers the Channel Handler function for the provided Channel Type
-func (s *ChannelsMux) HandleChannelFunc(channelType string, f ChannelHandlerFunc) {
+func (s *ChannelsMux) HandleChannelFunc(channelType string, f func(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan *ssh.Request, sshConn ssh.Conn)) {
 	s.HandleChannel(channelType, ChannelHandlerFunc(f))
 
 }
@@ -211,7 +224,7 @@ func (s *GlobalMultipleRequestsMux) HandleRequests(reqs <-chan *ssh.Request, ssh
 func (s *ChannelsMux) HandleChannels(chans <-chan ssh.NewChannel, sshConn ssh.Conn) {
 	for newChannel := range chans {
 
-		log.Printf("Received channel: %v", newChannel.ChannelType())
+		logger.Printf("Received channel: %v", newChannel.ChannelType())
 
 		// Check the type of channel
 		t := newChannel.ChannelType()
@@ -220,14 +233,14 @@ func (s *ChannelsMux) HandleChannels(chans <-chan ssh.NewChannel, sshConn ssh.Co
 
 		s.channelMutex.RUnlock()
 		if !ok {
-			log.Printf("Unknown channel type: %s", t)
+			logger.Printf("Unknown channel type: %s", t)
 
 			newChannel.Reject(ssh.UnknownChannelType, fmt.Sprintf("unknown channel type: %s", t))
 			continue
 		}
 		channel, requests, err := newChannel.Accept()
 		if err != nil {
-			log.Printf("could not accept channel (%s)", err)
+			logger.Printf("could not accept channel (%s)", err)
 			continue
 		}
 		go handler.HandleChannel(newChannel, channel, requests, sshConn)
@@ -251,8 +264,8 @@ func HandleRequest(requestType string, handler GlobalRequestHandler) {
 }
 
 // HandleRequestFunc registers the given handler function with the DefaultGlobalMultipleRequestsHandler
-func HandleRequestFunc(requestType string, handler GlobalRequestHandlerFunc) {
-	DefaultGlobalMultipleRequestsHandler.HandleRequestFunc(requestType, handler)
+func HandleRequestFunc(requestType string, handler func(*ssh.Request, ssh.Conn)) {
+	DefaultGlobalMultipleRequestsHandler.HandleRequestFunc(requestType, GlobalRequestHandlerFunc(handler))
 }
 
 // HandleChannel registers the given handler under the channelType with the DefaultMultipleChannelsHandler
@@ -261,8 +274,8 @@ func HandleChannel(channelType string, handler ChannelHandler) {
 }
 
 // HandleChannelFunc registers the given handler function under the channelType with the DefaultMultipleChannelsHandler
-func HandleChannelFunc(channelType string, handler ChannelHandlerFunc) {
-	DefaultMultipleChannelsHandler.HandleChannelFunc(channelType, handler)
+func HandleChannelFunc(channelType string, handler func(newChannel ssh.NewChannel, channel ssh.Channel, reqs <-chan *ssh.Request, sshConn ssh.Conn)) {
+	DefaultMultipleChannelsHandler.HandleChannelFunc(channelType, ChannelHandlerFunc(handler))
 }
 
 type channelsHandler struct {
